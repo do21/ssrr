@@ -476,8 +476,8 @@ class DNSResolver(object):
             logging.debug('hit cache: %s', hostname)
             ip = self._cache[hostname]
             callback((hostname, ip), None)
-        elif hostname in self._black_hostname_list:
-            callback(None, Exception('hostname <%s> in the black hostname list' % hostname))
+        elif any(hostname.endswith(t) for t in self._black_hostname_list):
+            callback(None, Exception('hostname <%s> is block by the black hostname list' % hostname))
             return
         else:
             if not is_valid_hostname(hostname):
@@ -521,7 +521,8 @@ class DNSResolver(object):
 
 def test():
     black_hostname_list = [
-        'baidu.com'
+        'baidu.com',
+        'yahoo.com',
     ]
     dns_resolver = DNSResolver(black_hostname_list=black_hostname_list)
     loop = eventloop.EventLoop()
@@ -538,7 +539,7 @@ def test():
             # TODO: what can we assert?
             print(result, error)
             counter += 1
-            if counter == 9:
+            if counter == 12:
                 dns_resolver.close()
                 loop.stop()
 
@@ -550,6 +551,8 @@ def test():
     dns_resolver.resolve(b'google.com', make_callback())
     dns_resolver.resolve('google.com', make_callback())
     dns_resolver.resolve('baidu.com', make_callback())
+    dns_resolver.resolve('map.baidu.com', make_callback())
+    dns_resolver.resolve('yahoo.com', make_callback())
     dns_resolver.resolve('example.com', make_callback())
     dns_resolver.resolve('ipv6.google.com', make_callback())
     dns_resolver.resolve('www.facebook.com', make_callback())
