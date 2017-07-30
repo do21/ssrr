@@ -572,15 +572,15 @@ def test():
     # test black_hostname_list
     dns_resolver = DNSResolver(black_hostname_list=[])
     assert type(dns_resolver._black_hostname_list) == list
-    assert dns_resolver._black_hostname_list.__len__() == 0
+    assert len(dns_resolver._black_hostname_list) == 0
     dns_resolver.close()
     dns_resolver = DNSResolver(black_hostname_list=123)
     assert type(dns_resolver._black_hostname_list) == list
-    assert dns_resolver._black_hostname_list.__len__() == 0
+    assert len(dns_resolver._black_hostname_list) == 0
     dns_resolver.close()
     dns_resolver = DNSResolver(black_hostname_list=None)
     assert type(dns_resolver._black_hostname_list) == list
-    assert dns_resolver._black_hostname_list.__len__() == 0
+    assert len(dns_resolver._black_hostname_list) == 0
     dns_resolver.close()
     dns_resolver = DNSResolver()
     assert type(dns_resolver._black_hostname_list) == list
