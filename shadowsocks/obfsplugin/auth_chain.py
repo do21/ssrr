@@ -639,6 +639,10 @@ class auth_chain_b(auth_chain_a):
         super(auth_chain_b, self).__init__(method)
         self.salt = b"auth_chain_b"
         self.no_compatible_method = 'auth_chain_b'
+        # NOTE
+        # 补全后长度数组
+        # 随机在其中选择一个补全到的长度
+        # 为每个连接初始化一个固定内容的数组
         self.data_size_list = []
         self.data_size_list2 = []
 
@@ -648,10 +652,12 @@ class auth_chain_b(auth_chain_a):
             self.data_size_list2 = []
         random = xorshift128plus()
         random.init_from_bin(key)
+        # 补全数组长为4~12-1
         list_len = random.next() % 8 + 4
         for i in range(0, list_len):
             self.data_size_list.append((int)(random.next() % 2340 % 2040 % 1440))
         self.data_size_list.sort()
+        # 补全数组长为8~24-1
         list_len = random.next() % 16 + 8
         for i in range(0, list_len):
             self.data_size_list2.append((int)(random.next() % 2340 % 2040 % 1440))
@@ -672,15 +678,21 @@ class auth_chain_b(auth_chain_a):
         random.init_from_bin_len(last_hash, buf_size)
         pos = bisect.bisect_left(self.data_size_list, buf_size + self.server_info.overhead)
         final_pos = pos + random.next() % (len(self.data_size_list))
+        # 假设random均匀分布，则越长的原始数据长度越容易if false
         if final_pos < len(self.data_size_list):
             return self.data_size_list[final_pos] - buf_size - self.server_info.overhead
 
+        # 上面if false后选择2号补全数组，此处有更精细的长度分段
         pos = bisect.bisect_left(self.data_size_list2, buf_size + self.server_info.overhead)
         final_pos = pos + random.next() % (len(self.data_size_list2))
         if final_pos < len(self.data_size_list2):
             return self.data_size_list2[final_pos] - buf_size - self.server_info.overhead
+        # final_pos 总是分布在pos~(data_size_list2.len-1)之间
         if final_pos < pos + len(self.data_size_list2) - 1:
             return 0
+        # 有1/len(self.data_size_list2)的概率不满足上一个if  ?
+        # 理论上不会运行到此处，因此可以插入运行断言  ?
+        # assert False
 
         if buf_size > 1300:
             return random.next() % 31
