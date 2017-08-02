@@ -795,7 +795,7 @@ class auth_chain_d(auth_chain_b):
     def check_and_patch_data_size(self, random):
         # append new item
         # when the biggest item(first time) or the last append item(other time) are not big enough.
-        # but set a limit size (64) to avoid stack over follow.
+        # but set a limit size (64) to avoid stack overflow.
         if self.data_size_list0[-1] < 1300 and len(self.data_size_list0) < 64:
             self.data_size_list0.append((int)(random.next() % 2340 % 2040 % 1440))
             self.check_and_patch_data_size(random)
