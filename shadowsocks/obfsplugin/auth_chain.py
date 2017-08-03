@@ -765,6 +765,8 @@ class auth_chain_c(auth_chain_b):
 
     def rnd_data_len(self, buf_size, last_hash, random):
         other_data_size = buf_size + self.server_info.overhead
+        # 一定要在random使用前初始化，以保证服务器与客户端同步，保证包大小验证结果正确
+        random.init_from_bin_len(last_hash, buf_size)
         # final_pos 总是分布在pos~(data_size_list0.len-1)之间
         # 除非data_size_list0中的任何值均过小使其全部都无法容纳buf
         if other_data_size >= self.data_size_list0[-1]:
@@ -778,7 +780,6 @@ class auth_chain_c(auth_chain_b):
                 return random.next() % 521
             return random.next() % 1021
 
-        random.init_from_bin_len(last_hash, buf_size)
         pos = bisect.bisect_left(self.data_size_list0, other_data_size)
         # random select a size in the leftover data_size_list0
         final_pos = pos + random.next() % (len(self.data_size_list0) - pos)
