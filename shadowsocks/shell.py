@@ -262,6 +262,8 @@ def get_config(is_local):
     else:
         config['server'] = to_str(config.get('server', '0.0.0.0'))
         config['black_hostname_list'] = to_str(config.get('black_hostname_list', '')).split(',')
+        if len(config['black_hostname_list']) == 1 and config['black_hostname_list'][0] == '':
+            config['black_hostname_list'] = []
         try:
             config['forbidden_ip'] = \
                 IPNetwork(config.get('forbidden_ip', '127.0.0.0/8,::1/128'))

@@ -276,7 +276,7 @@ class DNSResolver(object):
         self._hostname_to_cb = {}
         self._cb_to_hostname = {}
         self._cache = lru_cache.LRUCache(timeout=300)
-        # TODO read black_hostname_list from config
+        # read black_hostname_list from config
         if type(black_hostname_list) != list:
             self._black_hostname_list = []
         else:
