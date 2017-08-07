@@ -284,7 +284,7 @@ class DNSResolver(object):
                 (lambda t: t if type(t) == bytes else t.encode('utf8')),
                 black_hostname_list
             ))
-        print('black_hostname_list init as : ' + str(self._black_hostname_list))
+        logging.info('black_hostname_list init as : ' + str(self._black_hostname_list))
         self._sock = None
         self._servers = None
         self._parse_resolv()
@@ -473,7 +473,7 @@ class DNSResolver(object):
             ip = self._hosts[hostname]
             callback((hostname, ip), None)
         elif hostname in self._cache:
-            logging.debug('hit cache: %s', hostname)
+            logging.debug('hit cache: %s ==>> %s', hostname, self._cache[hostname])
             ip = self._cache[hostname]
             callback((hostname, ip), None)
         elif any(hostname.endswith(t) for t in self._black_hostname_list):
