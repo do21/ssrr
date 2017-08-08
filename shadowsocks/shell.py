@@ -26,7 +26,6 @@ import logging
 from shadowsocks.common import to_bytes, to_str, IPNetwork, PortRange
 from shadowsocks import encrypt
 
-
 VERBOSE_LEVEL = 5
 
 verbose = 0
@@ -52,6 +51,7 @@ def print_exception(e):
         import traceback
         traceback.print_exc()
 
+
 def __version():
     version_str = ''
     try:
@@ -65,8 +65,10 @@ def __version():
             pass
     return version_str
 
+
 def print_shadowsocks():
     print('ShadowsocksR %s' % __version())
+
 
 def log_shadowsocks_version():
     logging.info('ShadowsocksR %s' % __version())
@@ -83,6 +85,7 @@ def find_config():
         return file_name if os.path.exists(file_name) else None
 
     return sub_find(user_config_path) or sub_find(config_path)
+
 
 def check_config(config, is_local):
     if config.get('daemon', None) == 'stop':
@@ -110,13 +113,13 @@ def check_config(config, is_local):
         logging.warning('warning: local set to listen on 0.0.0.0, it\'s not safe')
     if config.get('server', '') in ['127.0.0.1', 'localhost']:
         logging.warning('warning: server set to listen on %s:%s, are you sure?' %
-                     (to_str(config['server']), config['server_port']))
+                        (to_str(config['server']), config['server_port']))
     if config.get('timeout', 300) < 100:
         logging.warning('warning: your timeout %d seems too short' %
-                     int(config.get('timeout')))
+                        int(config.get('timeout')))
     if config.get('timeout', 300) > 600:
         logging.warning('warning: your timeout %d seems too long' %
-                     int(config.get('timeout')))
+                        int(config.get('timeout')))
     if config.get('password') in [b'mypassword']:
         logging.error('DON\'T USE DEFAULT PASSWORD! Please change it in your '
                       'config.json!')
@@ -160,7 +163,6 @@ def get_config(is_local):
         if config_path is None:
             config_path = find_config()
 
-
         if config_path:
             logging.debug('loading config from %s' % config_path)
             with open(config_path, 'rb') as f:
@@ -169,7 +171,6 @@ def get_config(is_local):
                 except ValueError as e:
                     logging.error('found an error in config.json: %s', str(e))
                     sys.exit(1)
-
 
         v_count = 0
         for key, value in optlist:
@@ -260,6 +261,9 @@ def get_config(is_local):
             config['server'] = to_str(config['server'])
     else:
         config['server'] = to_str(config.get('server', '0.0.0.0'))
+        config['black_hostname_list'] = to_str(config.get('black_hostname_list', '')).split(',')
+        if len(config['black_hostname_list']) == 1 and config['black_hostname_list'][0] == '':
+            config['black_hostname_list'] = []
         try:
             config['forbidden_ip'] = \
                 IPNetwork(config.get('forbidden_ip', '127.0.0.0/8,::1/128'))
@@ -398,6 +402,7 @@ def _decode_dict(data):
         rv[key] = value
     return rv
 
+
 class JSFormat:
     def __init__(self):
         self.state = 0
@@ -434,6 +439,7 @@ class JSFormat:
                 self.state = 0
                 return "\n"
         return ""
+
 
 def remove_comment(json):
     fmt = JSFormat()

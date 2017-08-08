@@ -27,11 +27,11 @@ import logging
 if __name__ == '__main__':
     import sys
     import inspect
+
     file_path = os.path.dirname(os.path.realpath(inspect.getfile(inspect.currentframe())))
     sys.path.insert(0, os.path.join(file_path, '../'))
 
 from shadowsocks import common, lru_cache, eventloop, shell
-
 
 CACHE_SWEEP_INTERVAL = 30
 
@@ -77,6 +77,7 @@ QTYPE_CNAME = 5
 QTYPE_NS = 2
 QCLASS_IN = 1
 
+
 def detect_ipv6_supprot():
     if 'has_ipv6' in dir(socket):
         try:
@@ -89,7 +90,9 @@ def detect_ipv6_supprot():
     print('IPv6 not support')
     return False
 
+
 IPV6_CONNECTION_SUPPORT = detect_ipv6_supprot()
+
 
 def build_address(address):
     address = address.strip(b'.')
@@ -175,7 +178,7 @@ def parse_record(data, offset, question=False):
         )
         ip = parse_ip(record_type, data, record_rdlength, offset + nlen + 10)
         return nlen + 10 + record_rdlength, \
-            (name, ip, record_type, record_class, record_ttl)
+               (name, ip, record_type, record_class, record_ttl)
     else:
         record_type, record_class = struct.unpack(
             '!HH', data[offset + nlen:offset + nlen + 4]
@@ -209,7 +212,7 @@ def parse_response(data):
             if not header:
                 return None
             res_id, res_qr, res_tc, res_ra, res_rcode, res_qdcount, \
-                res_ancount, res_nscount, res_arcount = header
+            res_ancount, res_nscount, res_arcount = header
 
             qds = []
             ans = []
@@ -266,14 +269,22 @@ STATUS_IPV6 = 1
 
 
 class DNSResolver(object):
-
-    def __init__(self):
+    def __init__(self, black_hostname_list=None):
         self._loop = None
         self._hosts = {}
         self._hostname_status = {}
         self._hostname_to_cb = {}
         self._cb_to_hostname = {}
         self._cache = lru_cache.LRUCache(timeout=300)
+        # read black_hostname_list from config
+        if type(black_hostname_list) != list:
+            self._black_hostname_list = []
+        else:
+            self._black_hostname_list = list(map(
+                (lambda t: t if type(t) == bytes else t.encode('utf8')),
+                black_hostname_list
+            ))
+        logging.info('black_hostname_list init as : ' + str(self._black_hostname_list))
         self._sock = None
         self._servers = None
         self._parse_resolv()
@@ -377,7 +388,7 @@ class DNSResolver(object):
             ip = None
             for answer in response.answers:
                 if answer[1] in (QTYPE_A, QTYPE_AAAA) and \
-                        answer[2] == QCLASS_IN:
+                                answer[2] == QCLASS_IN:
                     ip = answer[0]
                     break
             if IPV6_CONNECTION_SUPPORT:
@@ -462,19 +473,22 @@ class DNSResolver(object):
             ip = self._hosts[hostname]
             callback((hostname, ip), None)
         elif hostname in self._cache:
-            logging.debug('hit cache: %s', hostname)
+            logging.debug('hit cache: %s ==>> %s', hostname, self._cache[hostname])
             ip = self._cache[hostname]
             callback((hostname, ip), None)
+        elif any(hostname.endswith(t) for t in self._black_hostname_list):
+            callback(None, Exception('hostname <%s> is block by the black hostname list' % hostname))
+            return
         else:
             if not is_valid_hostname(hostname):
                 callback(None, Exception('invalid hostname: %s' % hostname))
                 return
             if False:
                 addrs = socket.getaddrinfo(hostname, 0, 0,
-                                       socket.SOCK_DGRAM, socket.SOL_UDP)
+                                           socket.SOCK_DGRAM, socket.SOL_UDP)
                 if addrs:
                     af, socktype, proto, canonname, sa = addrs[0]
-                    logging.debug('DNS resolve %s %s' % (hostname, sa[0]) )
+                    logging.debug('DNS resolve %s %s' % (hostname, sa[0]))
                     self._cache[hostname] = sa[0]
                     callback((hostname, sa[0]), None)
                     return
@@ -506,7 +520,11 @@ class DNSResolver(object):
 
 
 def test():
-    dns_resolver = DNSResolver()
+    black_hostname_list = [
+        'baidu.com',
+        'yahoo.com',
+    ]
+    dns_resolver = DNSResolver(black_hostname_list=black_hostname_list)
     loop = eventloop.EventLoop()
     dns_resolver.add_to_loop(loop)
 
@@ -521,16 +539,20 @@ def test():
             # TODO: what can we assert?
             print(result, error)
             counter += 1
-            if counter == 9:
+            if counter == 12:
                 dns_resolver.close()
                 loop.stop()
+
         a_callback = callback
         return a_callback
 
-    assert(make_callback() != make_callback())
+    assert (make_callback() != make_callback())
 
     dns_resolver.resolve(b'google.com', make_callback())
     dns_resolver.resolve('google.com', make_callback())
+    dns_resolver.resolve('baidu.com', make_callback())
+    dns_resolver.resolve('map.baidu.com', make_callback())
+    dns_resolver.resolve('yahoo.com', make_callback())
     dns_resolver.resolve('example.com', make_callback())
     dns_resolver.resolve('ipv6.google.com', make_callback())
     dns_resolver.resolve('www.facebook.com', make_callback())
@@ -546,10 +568,25 @@ def test():
                          'ooooooooooooooooooooooooooooooooooooooooooooooooooo'
                          'ooooooooooooooooooooooooooooooooooooooooooooooooooo'
                          'long.hostname', make_callback())
-
     loop.run()
+    # test black_hostname_list
+    dns_resolver = DNSResolver(black_hostname_list=[])
+    assert type(dns_resolver._black_hostname_list) == list
+    assert len(dns_resolver._black_hostname_list) == 0
+    dns_resolver.close()
+    dns_resolver = DNSResolver(black_hostname_list=123)
+    assert type(dns_resolver._black_hostname_list) == list
+    assert len(dns_resolver._black_hostname_list) == 0
+    dns_resolver.close()
+    dns_resolver = DNSResolver(black_hostname_list=None)
+    assert type(dns_resolver._black_hostname_list) == list
+    assert len(dns_resolver._black_hostname_list) == 0
+    dns_resolver.close()
+    dns_resolver = DNSResolver()
+    assert type(dns_resolver._black_hostname_list) == list
+    assert dns_resolver._black_hostname_list.__len__() == 0
+    dns_resolver.close()
 
 
 if __name__ == '__main__':
     test()
-
